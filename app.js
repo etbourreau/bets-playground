@@ -10,7 +10,6 @@ const App = {
 
         const bet = {
             progress: {
-                key: 0,
                 width: 0,
                 transitionTime: null,
             },
@@ -296,13 +295,15 @@ const App = {
                 <h4 class="text-center">{{status}}</h4>
             </div>
             <div class="row">
-                <div class="progress" :key="bet.progress.key" :style="{
-                    width: bet.progress.width + '%',
-                    transition: bet.progress.transitionTime ?
-                        'width ' + bet.progress.transitionTime + 'ms' :
-                        'none',
-                    transitionTimingFunction: 'linear',
-                }"></div>
+                <div class="progress"
+                    :style="{
+                        width: bet.progress.width + '%',
+                        transition: bet.progress.transitionTime ?
+                            'width ' + bet.progress.transitionTime + 'ms' :
+                            'none',
+                        transitionTimingFunction: 'linear',
+                    }">
+                </div>
             </div>
             <div class="row mt-3">
                 <h5 class="text-center">Bet Infos:</h5>
