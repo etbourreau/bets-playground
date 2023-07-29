@@ -1,29 +1,102 @@
+/* --------------- VARIABLES ------------------ */
+
+:root {
+    --bg-color: rgb(32, 32, 32);
+    --font-color: rgb(200, 200, 200);
+    --contrast-color: rgb(2, 103, 193);
+    --win-color: rgb(50, 159, 91);
+    --bet-color: rgb(244, 34, 114);
+}
+
+/* --------------- GLOBAL ------------------ */
+
 html, body {
     width: 100%;
     height: 100dvh;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 body {
-    background-color: rgb(32, 32, 32);
-    color: rgb(200, 200, 200);
+    background-color: var(--bg-color);
+    color: var(--font-color);
 }
 
 h1, h2, h3, h4, h5, p {
     margin-bottom: 0;
 }
 
+hr {
+    border-color: var(--font-color);
+    margin: .5em 0;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* --------------- SPECIFIC ------------------ */
+
 .progress {
     padding: 0;
     border-radius: 0;
     height: 5px;
-    background-color: lightblue;
+    background-color: var(--contrast-color);
     transition: width 200ms;
 }
 
 .bet-option {
-    width: fit-content;
+    border: thin solid var(--contrast-color);
+    border-radius: .5em;
 }
-.bet-option:not(:last-child) {
-    border-bottom: thin solid rgb(200, 200, 200);
+.bet-option.winner {
+    border-color: var(--win-color);
+}
+
+.money-stats {
+    height: 5rem;
+}
+.money-stats .participant > * {
+    border-color: var(--bg-color);
+    border-style: solid;
+    border-width: 0;
+    border-left-width: thin;
+    border-right-width: thin;
+    transition: height 200ms ease;
+}
+.money-stats .participant .bet-money {
+    background-color: var(--bet-color);
+}
+.money-stats .participant .money {
+    background-color: var(--contrast-color);
+}
+.money-stats .participant.winner .money {
+    background-color: var(--win-color);
+}
+.money-stats .participant.active .bet-money,
+.money-stats .participant.active .money {
+    border-color: var(--font-color);
+}
+.money-stats .participant.active .money {
+    border-bottom-width: thin;
+}
+
+.stats-details {
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--contrast-color);
+    border-left-width: thin;
+    border-right-width: thin;
+}
+.stats-details:last-child {
+    padding-bottom: .5rem;
+    border-bottom-width: thin;
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+}
+
+.text-win {
+    color: var(--win-color);
+}
+.text-lose {
+    color: var(--bet-color);
 }
