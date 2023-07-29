@@ -9,13 +9,15 @@ const App = {
         }
 
         const bet = {
-            progressKey: 0,
+            progress: {
+                key: 0,
+                width: 0,
+                transitionTime: null,
+            },
             started: false,
             options: [],
             results: null,
             amount: 0,
-            timeStart: null,
-            timeEnd: null,
         };
 
         return {
@@ -42,14 +44,6 @@ const App = {
                     .map((b) => b.money + b.betMoney)
                     .sort((a, b) => (a < b ? -1 : 1));
                 return list[parseInt(list.length / 2)];
-            },
-            getBetTimeProgress: () => {
-                if (!this.bet.timeStart || !this.bet.timeEnd) {
-                    return 0;
-                }
-                const now = new Date().getTime() - this.bet.timeStart;
-                const max = this.bet.timeEnd - this.bet.timeStart;
-                return parseInt(((max - now) / max) * 100);
             },
             getBetsToShow: () => {
                 return this.bet.options || [];
@@ -136,15 +130,14 @@ const App = {
                 this.status = "It's bet time";
                 const betTime = random(10000, 20000);
                 const betTick = 100;
-                this.bet.timeStart = new Date().getTime();
-                this.bet.timeEnd = this.bet.timeStart + betTime;
                 // create pseudo-realistic bet behavior
                 await new Promise((r) => {
+                    this.bet.progress.width = 100;
+                    setTimeout(() => {
+                        this.bet.progress.transitionTime = betTime;
+                        this.bet.progress.width = 0;
+                    }, 1)
                     let betProc;
-                    const progressProc = setInterval(
-                        () => this.bet.progressKey++,
-                        200
-                    );
                     setTimeout(() => {
                         betProc = setInterval(() => {
                             this.population.forEach((b) => {
@@ -181,15 +174,13 @@ const App = {
 
                     setTimeout(() => {
                         clearInterval(betProc);
-                        clearInterval(progressProc);
                         r();
                     }, betTime);
                 });
 
                 // bet is over
                 this.status = "Waiting for results...";
-                this.bet.timeStart = null;
-                this.bet.timeEnd = null;
+                this.bet.progress.transitionTime = null;
                 await wait(5000);
 
                 // show results
@@ -275,7 +266,9 @@ const App = {
                 if (!b.betMoney) {
                     return 0;
                 }
-                return parseInt((b.betMoney / this.getStatsMaxMoney()) * 100) + 1;
+                return (
+                    parseInt((b.betMoney / this.getStatsMaxMoney()) * 100) + 1
+                );
             },
         };
     },
@@ -303,8 +296,12 @@ const App = {
                 <h4 class="text-center">{{status}}</h4>
             </div>
             <div class="row">
-                <div class="progress" :key="bet.progressKey" :style="{
-                    width: this.getBetTimeProgress() + '%',
+                <div class="progress" :key="bet.progress.key" :style="{
+                    width: bet.progress.width + '%',
+                    transition: bet.progress.transitionTime ?
+                        'width ' + bet.progress.transitionTime + 'ms' :
+                        'none',
+                    transitionTimingFunction: 'linear',
                 }"></div>
             </div>
             <div class="row mt-3">
@@ -339,7 +336,7 @@ const App = {
                     class="flex-grow-1 h-100 cursor-pointer participant d-flex flex-column justify-content-end"
                     :class="{
                         active: stats.target?.name === b.name,
-                        winner: b.betOption && bet.results?.option.i === bet.options[b.betOption].i
+                        winner: b.betOption !== null && bet.results?.option.i === bet.options[b.betOption].i
                     }"
                     @click="stats.target = stats.target?.name !== b.name ? b : null">
                         <div class="bet-money"
