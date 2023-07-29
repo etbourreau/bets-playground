@@ -9,6 +9,7 @@ const App = {
         }
 
         const bet = {
+            number: 1,
             progress: {
                 width: 0,
                 transitionTime: null,
@@ -113,7 +114,7 @@ const App = {
                 return (1 / (betOptionMoney / otherBetOptionsMoney)).toFixed(2);
             },
             process: async () => {
-                this.status = "Get ready for the next bet...";
+                this.status = `Get ready for bet ${this.bet.number} ...`;
                 await wait(2000);
 
                 // init bet data
@@ -135,7 +136,7 @@ const App = {
                     setTimeout(() => {
                         this.bet.progress.transitionTime = betTime;
                         this.bet.progress.width = 0;
-                    }, 1)
+                    }, 1);
                     let betProc;
                     setTimeout(() => {
                         betProc = setInterval(() => {
@@ -206,13 +207,29 @@ const App = {
                         .reduce(sum);
                     results.winners.forEach((w) => {
                         const ratio = w.betMoney / totalWinnerBet;
-                        w.money += parseInt(results.totalGained * ratio);
+                        const gain = parseInt(results.totalGained * ratio);
+                        w.history.push(
+                            new BotHistoryEntry(
+                                this.bet.number,
+                                true,
+                                w.betMoney,
+                                gain
+                            )
+                        );
+                        w.money += w.betMoney + gain;
                         w.betOption = null;
                         w.betMoney = null;
                     });
                     this.population
                         .filter((b) => b.betOption !== null)
                         .forEach((b) => {
+                            b.history.push(
+                                new BotHistoryEntry(
+                                    this.bet.number,
+                                    false,
+                                    b.betMoney
+                                )
+                            );
                             b.betOption = null;
                             b.betMoney = null;
                         });
@@ -221,6 +238,15 @@ const App = {
                     this.population
                         .filter((b) => b.betOption !== null)
                         .forEach((b) => {
+                            b.history.push(
+                                new BotHistoryEntry(
+                                    this.bet.number,
+                                    false,
+                                    b.betMoney,
+                                    0,
+                                    true
+                                )
+                            );
                             b.betOption = null;
                             b.money += b.betMoney;
                             b.betMoney = null;
@@ -230,6 +256,7 @@ const App = {
                 this.bet.options = [];
                 this.bet.results = null;
                 this.bet.amount = 0;
+                this.bet.number++;
                 setTimeout(this.process, 1);
             },
             getPotentialGain: (b) => {
@@ -308,6 +335,7 @@ const App = {
             <div class="row mt-3">
                 <h5 class="text-center">Bet Infos:</h5>
                 <div class="w-100 d-flex justify-content-evenly">
+                    <span>Bet #{{bet.number}}</span>
                     <span>Participants: {{getBetTotalParticipants()}}</span>
                     <span>Bets: {{bet.amount}}</span>
                     <span>Total: {{formatMoney(getBetTotalMoney())}} $</span>
@@ -370,6 +398,14 @@ const App = {
                         "won " + formatMoney(getPotentialGain(stats.target)) + " $" :
                         "lost " + formatMoney(stats.target.betMoney) + " $"
                 }}</span>
+            </div>
+            <div v-if="stats.target?.history.length" class="stats-details w-100 d-flex flex-column px-2">
+                <h5 class="text-center">History</h5>
+                <div v-for="h in stats.target.history" class="w-100 history-entry">
+                    <span v-if="h.draw">Bet #{{h.betNumber}}: placed {{formatMoney(h.amountBet)}} $ but no one won</span>
+                    <span v-else-if="h.win" class="text-win">Bet #{{h.betNumber}}: placed {{formatMoney(h.amountBet)}} $ and won {{formatMoney(h.amountWon)}} $</span>
+                    <span v-else class="text-lose">Bet #{{h.betNumber}}: placed {{formatMoney(h.amountBet)}} $ and lost</span>
+                </div>
             </div>
         </div>
     `,
