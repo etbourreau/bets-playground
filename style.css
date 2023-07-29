@@ -1,0 +1,29 @@
+html, body {
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+body {
+    background-color: rgb(32, 32, 32);
+    color: rgb(200, 200, 200);
+}
+
+h1, h2, h3, h4, h5, p {
+    margin-bottom: 0;
+}
+
+.progress {
+    padding: 0;
+    border-radius: 0;
+    height: 5px;
+    background-color: lightblue;
+    transition: width 200ms;
+}
+
+.bet-option {
+    width: fit-content;
+}
+.bet-option:not(:last-child) {
+    border-bottom: thin solid rgb(200, 200, 200);
+}
