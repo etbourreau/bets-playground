@@ -305,10 +305,10 @@ const App = {
                     winners: this.bet.options[winner].participants,
                     totalGained: 0,
                 };
-                this.status = `Option ${this.bet.options[winner].i} won !\n${
+                this.status = `Option ${this.bet.options[winner].i} won !<br/>${
                     results.winners.length
-                } participants will obtain ${this.getBetOtherOptionsMoney(
-                    results.option
+                } participants will obtain ${formatMoney(
+                    this.getBetOtherOptionsMoney(results.option)
                 )} $`;
                 results.totalGained = this.population
                     .filter(
@@ -521,7 +521,7 @@ const App = {
             </div>
             <hr />
             <div class="row mt-3">
-                <h4 class="text-center">{{status}}</h4>
+                <h4 class="text-center" v-html="status"/>
             </div>
             <div class="row">
                 <div class="progress"
