@@ -509,7 +509,7 @@ const App = {
                 </div>
             </div>
             <div v-if="stats.target" class="stats-details w-100 d-flex justify-content-evenly pt-2">
-                <span>Participant #{{stats.target.i}}: {{stats.target.name}}</span>
+                <span>Participant #{{stats.target.i+1}}: {{stats.target.name}}</span>
                 <span>Money: {{formatMoney(stats.target.money)}} $</span>
                 <span>Rank #{{getStatGlobalRank(stats.target)}}</span>
             </div>
