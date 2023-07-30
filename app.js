@@ -24,6 +24,7 @@ const App = {
                 self.stats.target = null;
                 self.stats.history.open = false;
                 clearInterval(self.naturalGainProc);
+                self.naturalGainProc = null;
             }
             self.population = [];
             const names = shuffleNames(botAmount);
