@@ -8,7 +8,8 @@ class BotHistoryEntry {
     }
 }
 class Bot {
-    constructor(i, name, startMoney) {
+    constructor(i, name, startMoney, isPlayer = false) {
+        this.isPlayer = isPlayer;
         this.i = i
         this.name = name;
         this.money = startMoney;

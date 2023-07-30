@@ -49,10 +49,17 @@ hr {
     height: 5px;
     background-color: var(--contrast-color);
 }
+.progress.warning {
+    background-color: var(--bet-color);
+}
 
 .bet-option {
     border: thin solid var(--contrast-color);
     border-radius: 0.5em;
+    transition: border-color .2s;
+}
+.bet-option.betable:hover {
+    border-color: var(--font-color);
 }
 .bet-option.winner {
     border-color: var(--win-color);

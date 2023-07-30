@@ -9,12 +9,14 @@ const App = {
                 progress: {
                     width: 0,
                     transitionTime: null,
+                    warning: false,
                 },
                 started: false,
                 proc: null,
                 options: [],
                 results: null,
                 amount: 0,
+                betable: false,
             },
         };
 
@@ -29,12 +31,19 @@ const App = {
             self.population = [];
             const names = shuffleNames(botAmount);
             for (let i = 0; i < botAmount; i++) {
-                self.population.push(new Bot(i, names[i], random(50, 20000)));
+                const money = random(50, 20000);
+                if (i === 0) {
+                    // player
+                    self.population.push(new Bot(i, "You", money, true));
+                } else {
+                    self.population.push(new Bot(i, names[i], money));
+                }
             }
 
             self.bet.number = 1;
             self.bet.progress.width = 0;
             self.bet.progress.transitionTime = null;
+            self.bet.progress.warning = false;
             self.bet.started = false;
             self.bet.options = [];
             self.bet.results = null;
@@ -75,16 +84,6 @@ const App = {
             },
             getBetsToShow: () => {
                 return this.bet.options || [];
-                // sort by most bet money
-                return this.bet.options.sort((a, b) => {
-                    const aT = a.participants.length
-                        ? a.participants.map((p) => p.betMoney).reduce(sum)
-                        : 0;
-                    const bT = b.participants.length
-                        ? b.participants.map((p) => p.betMoney).reduce(sum)
-                        : 0;
-                    return aT < bT ? 1 : aT > bT ? -1 : 0;
-                });
             },
             getBetTotalParticipants: () => {
                 return this.bet.options.length
@@ -203,6 +202,7 @@ const App = {
                 this.status = "It's bet time";
                 const betTime = random(10000, 20000);
                 const betTick = 100;
+                this.bet.betable = true;
                 // create pseudo-realistic bet behavior
                 await new Promise((r) => {
                     this.bet.progress.width = 100;
@@ -212,38 +212,48 @@ const App = {
                     }, 1);
                     setTimeout(() => {
                         this.bet.proc = setInterval(() => {
-                            this.population.forEach((b) => {
-                                if (!this.bet.started || cancelled) {
-                                    return;
-                                }
-                                if (b.betOption === null) {
-                                    if (b.money > 0 && random(0, betTime / betTick) < 7 / 10) {
-                                        b.betOption = random(
-                                            0,
-                                            this.bet.options.length
-                                        );
-                                        b.betMoney = random(1, b.money * 0.4);
-                                        b.money -= b.betMoney;
-                                        this.bet.options[
-                                            b.betOption
-                                        ]?.participants.push(b);
-                                        this.bet.amount++;
+                            this.population
+                                .filter((b) => !b.isPlayer)
+                                .forEach((b) => {
+                                    if (!this.bet.started || cancelled) {
+                                        return;
                                     }
-                                } else {
-                                    if (
-                                        b.money > 0 &&
-                                        random(0, betTime / betTick) < 1 / 30
-                                    ) {
-                                        const amount = random(
-                                            1,
-                                            b.money + 1
-                                        );
-                                        b.betMoney += amount;
-                                        b.money -= amount;
-                                        this.bet.amount++;
+                                    if (b.betOption === null) {
+                                        if (
+                                            b.money > 0 &&
+                                            random(0, betTime / betTick) <
+                                                7 / 10
+                                        ) {
+                                            b.betOption = random(
+                                                0,
+                                                this.bet.options.length
+                                            );
+                                            b.betMoney = random(
+                                                1,
+                                                b.money * 0.4
+                                            );
+                                            b.money -= b.betMoney;
+                                            this.bet.options[
+                                                b.betOption
+                                            ]?.participants.push(b);
+                                            this.bet.amount++;
+                                        }
+                                    } else {
+                                        if (
+                                            b.money > 0 &&
+                                            random(0, betTime / betTick) <
+                                                1 / 30
+                                        ) {
+                                            const amount = random(
+                                                1,
+                                                b.money + 1
+                                            );
+                                            b.betMoney += amount;
+                                            b.money -= amount;
+                                            this.bet.amount++;
+                                        }
                                     }
-                                }
-                            });
+                                });
                             if (!this.bet.started && !cancelled) {
                                 cancelled = true;
                                 clearInterval(this.bet.proc);
@@ -261,11 +271,18 @@ const App = {
                             r();
                         }
                     }, betTime);
+                    setTimeout(() => {
+                        if (!cancelled) {
+                            this.bet.progress.warning = true;
+                        }
+                    }, betTime - 3000);
                 });
             },
             processWaitForResults: async () => {
+                this.bet.betable = false;
                 this.status = "Waiting for results...";
                 this.bet.progress.transitionTime = null;
+                this.bet.progress.warning = false;
                 return new Promise((r) => {
                     this.bet.proc = setInterval(() => {
                         if (!this.bet.started) {
@@ -283,7 +300,7 @@ const App = {
             },
             processShowResults: async () => {
                 const winner = random(0, this.bet.options.length);
-                this.status = `"${this.bet.options[winner].i}" wins !`;
+                this.status = `Option ${this.bet.options[winner].i} won !`;
                 const results = {
                     option: this.bet.options[winner],
                     winners: this.bet.options[winner].participants,
@@ -434,6 +451,27 @@ const App = {
                     this.status = "Cleaning last session...";
                 }
             },
+            createPlayerBet: (option) => {
+                if (this.bet.betable) {
+                    const player = this.population[0];
+                    const optionIndex = this.bet.options.indexOf(option);
+                    const input = prompt(
+                        `How much do you want to bet on ${option.i} ? (You have ${player.money} $)`
+                    );
+                    const parsed = input && parseInt(input);
+                    if (input && !isNaN(parsed) && player.money >= parsed) {
+                        player.betOption = optionIndex;
+                        if (player.betMoney === null) {
+                            player.betMoney = parsed;
+                            option.participants.push(player);
+                        } else {
+                            player.betMoney += parsed;
+                        }
+                        player.money -= parsed;
+                        this.bet.amount++;
+                    }
+                }
+            },
         };
     },
     mounted() {
@@ -453,11 +491,39 @@ const App = {
                 </div>
             </div>
             <hr />
+            <div class="row justify-content-evenly">
+                <div class="w-100 d-flex justify-content-evenly align-items-center">
+                    <span :title="population[0].money + ' $'">Your money: {{formatMoney(population[0].money)}} $</span>
+                    <span>Your rank: #{{getStatGlobalRank(population[0])}}</span>
+                </div>
+            </div>
+            <div v-if="population[0].betOption !== null" class="row justify-content-center">
+                <div class="w-100 d-flex justify-content-evenly align-items-center"
+                    :class="{
+                        'text-win': bet.results &&
+                            bet.options[population[0].betOption]?.i === bet.results.option.i,
+                        'text-lose': bet.results && bet.options[population[0].betOption]?.i !== bet.results.option.i
+                    }">
+                    <span>placed {{formatMoney(population[0].betMoney)}} $ on {{bet.options[population[0].betOption].i}}</span>
+                    <span class="px-2">⇒</span>
+                    <span>{{
+                        !bet.results ?
+                        "could win " + formatMoney(getPotentialGain(population[0])) + " $" :
+                        bet.options[population[0].betOption]?.i === bet.results.option.i ?
+                            "won " + formatMoney(getPotentialGain(population[0])) + " $" :
+                            "lost " + formatMoney(population[0].betMoney) + " $"
+                    }}</span>
+                </div>
+            </div>
+            <hr />
             <div class="row mt-3">
                 <h4 class="text-center">{{status}}</h4>
             </div>
             <div class="row">
                 <div class="progress"
+                    :class="{
+                        warning: bet.progress.warning,
+                    }"
                     :style="{
                         width: bet.progress.width + '%',
                         transition: bet.progress.transitionTime ?
@@ -481,8 +547,11 @@ const App = {
                     v-for="o in getBetsToShow()">
                     <div class="bet-option d-flex flex-column p-2"
                         :class="{
-                            winner: bet.results?.option.i === o.i
-                        }">
+                            winner: bet.results?.option.i === o.i,
+                            betable: bet.betable,
+                            'cursor-pointer': bet.betable,
+                        }"
+                        @click="createPlayerBet(o)">
                         <h5 class="text-center">Option {{o.i}}</h5>
                         <hr />
                         <span>Participants: {{o.participants.length}}</span>
