@@ -8,8 +8,9 @@ class BotHistoryEntry {
     }
 }
 class Bot {
-    constructor(i, startMoney) {
-        this.name = i;
+    constructor(i, name, startMoney) {
+        this.i = i
+        this.name = name;
         this.money = startMoney;
         this.betOption = null;
         this.betMoney = null;

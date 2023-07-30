@@ -2,32 +2,59 @@ const sum = (a, b) => a + b;
 
 const App = {
     data() {
-        const population = [];
-        const botAmount = random(20, 500);
-        for (let i = 0; i < botAmount; i++) {
-            population.push(new Bot(i + 1, random(50, 20000)));
-        }
-
-        const bet = {
-            number: 1,
-            progress: {
-                width: 0,
-                transitionTime: null,
+        let self = {
+            population: [],
+            bet: {
+                number: 1,
+                progress: {
+                    width: 0,
+                    transitionTime: null,
+                },
+                started: false,
+                proc: null,
+                options: [],
+                results: null,
+                amount: 0,
             },
-            started: false,
-            options: [],
-            results: null,
-            amount: 0,
         };
 
+        const init = (botAmount) => {
+            if (this.bet) {
+                self = this;
+                self.stats.target = null;
+                self.stats.history.open = false;
+                clearInterval(self.naturalGainProc);
+            }
+            self.population = [];
+            const names = shuffleNames(botAmount);
+            for (let i = 0; i < botAmount; i++) {
+                self.population.push(new Bot(i, names[i], random(50, 20000)));
+            }
+
+            self.bet.number = 1;
+            self.bet.progress.width = 0;
+            self.bet.progress.transitionTime = null;
+            self.bet.started = false;
+            self.bet.options = [];
+            self.bet.results = null;
+            self.bet.amount = 0;
+            self.bet.proc = null;
+        };
+        init(100);
+
         return {
-            population,
+            population: self.population,
             status: "",
-            bet,
+            bet: self.bet,
             stats: {
                 target: null,
+                history: {
+                    open: false,
+                },
             },
             naturalGainProc: null,
+            reset: false,
+            init,
             formatMoney: (val) => formatMoney(val),
             getTotalMoney: () => {
                 return this.population
@@ -114,10 +141,53 @@ const App = {
                 return (1 / (betOptionMoney / otherBetOptionsMoney)).toFixed(2);
             },
             process: async () => {
-                this.status = `Get ready for bet ${this.bet.number} ...`;
-                await wait(2000);
+                if (!this.naturalGainProc) {
+                    this.naturalGainProc = setInterval(() => {
+                        this.population.forEach((b) => (b.money += 50));
+                    }, 15_000);
+                }
 
-                // init bet data
+                await this.processWaitBeforeStart();
+                if (!this.bet.started) {
+                    setTimeout(this.process, 1);
+                    return;
+                }
+
+                await this.processCreateOptions();
+                if (!this.bet.started) {
+                    setTimeout(this.process, 1);
+                    return;
+                }
+
+                await this.processBet();
+                if (!this.bet.started) {
+                    setTimeout(this.process, 1);
+                    return;
+                }
+
+                await this.processWaitForResults();
+                if (!this.bet.started) {
+                    setTimeout(this.process, 1);
+                    return;
+                }
+
+                await this.processShowResults();
+                if (!this.bet.started) {
+                    setTimeout(this.process, 1);
+                    return;
+                }
+
+                await this.processEnd();
+
+                setTimeout(this.process, 1);
+            },
+            processWaitBeforeStart: async () => {
+                this.status = `Get ready for bet ${this.bet.number} ...`;
+                this.bet.started = true;
+                await wait(2000);
+            },
+            processCreateOptions: async () => {
+                this.bet.options = [];
                 const amountOptions = random(2, 9);
                 for (let i = 0; i < amountOptions; i++) {
                     this.bet.options.push({
@@ -125,8 +195,10 @@ const App = {
                         participants: [],
                     });
                 }
-                this.bet.started = true;
                 this.bet.amount = 0;
+            },
+            processBet: async () => {
+                let cancelled = false;
                 this.status = "It's bet time";
                 const betTime = random(10000, 20000);
                 const betTick = 100;
@@ -137,10 +209,12 @@ const App = {
                         this.bet.progress.transitionTime = betTime;
                         this.bet.progress.width = 0;
                     }, 1);
-                    let betProc;
                     setTimeout(() => {
-                        betProc = setInterval(() => {
+                        this.bet.proc = setInterval(() => {
                             this.population.forEach((b) => {
+                                if (!this.bet.started || cancelled) {
+                                    return;
+                                }
                                 if (b.betOption === null) {
                                     if (random(0, betTime / betTick) < 7 / 10) {
                                         b.betOption = random(
@@ -151,7 +225,7 @@ const App = {
                                         b.money -= b.betMoney;
                                         this.bet.options[
                                             b.betOption
-                                        ].participants.push(b);
+                                        ]?.participants.push(b);
                                         this.bet.amount++;
                                     }
                                 } else {
@@ -169,21 +243,44 @@ const App = {
                                     }
                                 }
                             });
+                            if (!this.bet.started && !cancelled) {
+                                cancelled = true;
+                                clearInterval(this.bet.proc);
+                                this.bet.proc = null;
+                                r();
+                                return;
+                            }
                         }, betTick);
                     }, 1000);
 
                     setTimeout(() => {
-                        clearInterval(betProc);
-                        r();
+                        if (!cancelled) {
+                            clearInterval(this.bet.proc);
+                            this.bet.proc = null;
+                            r();
+                        }
                     }, betTime);
                 });
-
-                // bet is over
+            },
+            processWaitForResults: async () => {
                 this.status = "Waiting for results...";
                 this.bet.progress.transitionTime = null;
-                await wait(5000);
-
-                // show results
+                return new Promise((r) => {
+                    this.bet.proc = setInterval(() => {
+                        if (!this.bet.started) {
+                            clearInterval(this.bet.proc);
+                            this.bet.proc = null;
+                            r();
+                        }
+                    }, 200);
+                    setTimeout(() => {
+                        clearInterval(this.bet.proc);
+                        this.bet.proc = null;
+                        r();
+                    }, 5000);
+                });
+            },
+            processShowResults: async () => {
                 const winner = random(0, this.bet.options.length);
                 this.status = `"${this.bet.options[winner].i}" wins !`;
                 const results = {
@@ -198,9 +295,25 @@ const App = {
                     .map((b) => b.betMoney)
                     .reduce(sum);
                 this.bet.results = results;
-                await wait(5000);
 
-                // end process : reset bet data
+                return new Promise((r) => {
+                    this.bet.proc = setInterval(() => {
+                        if (!this.bet.started) {
+                            clearInterval(this.bet.proc);
+                            this.bet.proc = null;
+                            r();
+                        }
+                    }, 200);
+                    setTimeout(() => {
+                        clearInterval(this.bet.proc);
+                        this.bet.proc = null;
+                        r();
+                    }, 5000);
+                });
+            },
+            processEnd: async () => {
+                const results = this.bet.results;
+                // reset bet data
                 if (results.winners.length) {
                     const totalWinnerBet = results.winners
                         .map((b) => b.betMoney)
@@ -257,7 +370,6 @@ const App = {
                 this.bet.results = null;
                 this.bet.amount = 0;
                 this.bet.number++;
-                setTimeout(this.process, 1);
             },
             getPotentialGain: (b) => {
                 if (b.betOption === null) {
@@ -296,13 +408,35 @@ const App = {
                     parseInt((b.betMoney / this.getStatsMaxMoney()) * 100) + 1
                 );
             },
+            getStatGlobalRank: (p) => {
+                return (
+                    this.population
+                        .map((b) => {
+                            return {
+                                i: b.name,
+                                val: b.money + b.betMoney,
+                            };
+                        })
+                        .sort((a, b) => (a.val > b.val ? -1 : 1))
+                        .map((b) => b.i)
+                        .indexOf(p.name) + 1
+                );
+            },
+            changeBotsAmount: () => {
+                const min = 20,
+                    max = 500;
+                const input = prompt(`Enter amount of bots (${min}-${max})`);
+                const parsed = input && parseInt(input);
+                if (input && !isNaN(parsed)) {
+                    const val = Math.max(min, Math.min(max, parsed));
+                    this.init(val);
+                    this.status = "Cleaning last session...";
+                }
+            },
         };
     },
     mounted() {
         this.process();
-        this.naturalGainProc = setInterval(() => {
-            this.population.forEach((b) => (b.money += 50));
-        }, 15_000);
     },
     beforeUnmount() {
         clearInterval(this.naturalGainProc);
@@ -310,8 +444,8 @@ const App = {
     template: `
         <div class="w-100">
             <div class="row">
-                <div class="w-100 d-flex justify-content-evenly">
-                    <span>{{population.length}} bots</span>
+                <div class="w-100 d-flex justify-content-evenly align-items-center">
+                    <span class="fake-btn cursor-pointer" @click="changeBotsAmount()">{{population.length}} bots</span>
                     <span>Avg: {{formatMoney(getAvgMoney())}} $</span>
                     <span>Median: {{formatMoney(getMedianMoney())}} $</span>
                     <span>Total: {{formatMoney(getTotalMoney())}} $</span>
@@ -365,7 +499,7 @@ const App = {
                     class="flex-grow-1 h-100 cursor-pointer participant d-flex flex-column justify-content-end"
                     :class="{
                         active: stats.target?.name === b.name,
-                        winner: b.betOption !== null && bet.results?.option.i === bet.options[b.betOption].i
+                        winner: b.betOption !== null && bet.results?.option.i === bet.options[b.betOption]?.i
                     }"
                     @click="stats.target = stats.target?.name !== b.name ? b : null">
                         <div class="bet-money"
@@ -375,15 +509,16 @@ const App = {
                 </div>
             </div>
             <div v-if="stats.target" class="stats-details w-100 d-flex justify-content-evenly pt-2">
-                <span>Participant {{stats.target.name}}</span>
+                <span>Participant #{{stats.target.i}}: {{stats.target.name}}</span>
                 <span>Money: {{formatMoney(stats.target.money)}} $</span>
+                <span>Rank #{{getStatGlobalRank(stats.target)}}</span>
             </div>
             <div v-if="stats.target && stats.target.betOption !== null"
                 class="stats-details w-100 d-flex justify-content-center"
                 :class="{
                     'text-win': bet.results &&
-                        bet.options[stats.target.betOption].i === bet.results.option.i,
-                    'text-lose': bet.results && bet.options[stats.target.betOption].i !== bet.results.option.i
+                        bet.options[stats.target.betOption]?.i === bet.results.option.i,
+                    'text-lose': bet.results && bet.options[stats.target.betOption]?.i !== bet.results.option.i
                 }">
                 <span>placed {{
                     formatMoney(stats.target.betMoney)
@@ -394,14 +529,21 @@ const App = {
                 <span>{{
                     !bet.results ?
                     "could win " + formatMoney(getPotentialGain(stats.target)) + " $" :
-                    bet.options[stats.target.betOption].i === bet.results.option.i ?
+                    bet.options[stats.target.betOption]?.i === bet.results.option.i ?
                         "won " + formatMoney(getPotentialGain(stats.target)) + " $" :
                         "lost " + formatMoney(stats.target.betMoney) + " $"
                 }}</span>
             </div>
             <div v-if="stats.target?.history.length" class="stats-details w-100 d-flex flex-column px-2">
-                <h5 class="text-center">History</h5>
-                <div v-for="h in stats.target.history" class="w-100 history-entry">
+                <h5 class="d-flex justify-content-center">
+                    <span class="d-flex align-items-center cursor-pointer" @click="stats.history.open = !stats.history.open">
+                        <span class="mx-1">History</span>
+                        <span class="mx-1 arrow" :class="{reverse: stats.history.open}" />
+                    </span>
+                </h5>
+                <div v-if="stats.history.open"
+                    v-for="h in stats.target.history"
+                    class="w-100 history-entry">
                     <span v-if="h.draw">Bet #{{h.betNumber}}: placed {{formatMoney(h.amountBet)}} $ but no one won</span>
                     <span v-else-if="h.win" class="text-win">Bet #{{h.betNumber}}: placed {{formatMoney(h.amountBet)}} $ and won {{formatMoney(h.amountWon)}} $</span>
                     <span v-else class="text-lose">Bet #{{h.betNumber}}: placed {{formatMoney(h.amountBet)}} $ and lost</span>
