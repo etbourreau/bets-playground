@@ -216,12 +216,12 @@ const App = {
                                     return;
                                 }
                                 if (b.betOption === null) {
-                                    if (random(0, betTime / betTick) < 7 / 10) {
+                                    if (b.money > 0 && random(0, betTime / betTick) < 7 / 10) {
                                         b.betOption = random(
                                             0,
                                             this.bet.options.length
                                         );
-                                        b.betMoney = random(50, b.money * 0.4);
+                                        b.betMoney = random(1, b.money * 0.4);
                                         b.money -= b.betMoney;
                                         this.bet.options[
                                             b.betOption
@@ -230,12 +230,12 @@ const App = {
                                     }
                                 } else {
                                     if (
-                                        b.money - b.betMoney > 0 &&
+                                        b.money > 0 &&
                                         random(0, betTime / betTick) < 1 / 30
                                     ) {
                                         const amount = random(
                                             1,
-                                            b.money - b.betMoney + 1
+                                            b.money + 1
                                         );
                                         b.betMoney += amount;
                                         b.money -= amount;
