@@ -182,7 +182,7 @@ const App = {
                 setTimeout(this.process, 1);
             },
             processWaitBeforeStart: async () => {
-                this.status = `Get ready for bet ${this.bet.number} ...`;
+                this.status = `Get ready for bet #${this.bet.number} ...`;
                 this.bet.started = true;
                 await wait(2000);
             },
@@ -300,12 +300,16 @@ const App = {
             },
             processShowResults: async () => {
                 const winner = random(0, this.bet.options.length);
-                this.status = `Option ${this.bet.options[winner].i} won !`;
                 const results = {
                     option: this.bet.options[winner],
                     winners: this.bet.options[winner].participants,
                     totalGained: 0,
                 };
+                this.status = `Option ${this.bet.options[winner].i} won !\n${
+                    results.winners.length
+                } participants will obtain ${this.getBetOtherOptionsMoney(
+                    results.option
+                )} $`;
                 results.totalGained = this.population
                     .filter(
                         (b) => b.betOption !== null && b.betOption !== winner
